@@ -1,0 +1,570 @@
+package com.alura.forohubapi.Servicio;
+
+import com.alura.forohubapi.Entidad.Usuario;
+import com.alura.forohubapi.Repositorio.UsuarioRepositorio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UsuarioServicio {
+    @Autowired
+    private UsuarioRepositorio usuarioRepositorio;
+
+    public Usuario obtenerUsuarioPorId(Long id) {
+        return usuarioRepositorio.findById(id).orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+}
+
+
+package com.alura.forohubapi.Controlador;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Entidad.Usuario;
+import com.alura.forohubapi.Servicio.PostServicio;
+import com.alura.forohubapi.Servicio.UsuarioServicio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/posts")
+public class PostControlador {
+    @Autowired
+    private PostServicio postServicio;
+
+    @Autowired
+    private UsuarioServicio usuarioServicio;
+
+    @PostMapping("/crear")
+    public Post crearPost(@RequestBody Post post, @RequestParam Long autorId) {
+        Usuario autor = usuarioServicio.obtenerUsuarioPorId(autorId);
+        post.setAutor(autor);
+        return postServicio.crearPost(post);
+    }
+
+    @GetMapping
+    public List<Post> obtenerTodosLosPosts() {
+        return postServicio.obtenerTodosLosPosts();
+    }
+}
+
+
+package com.alura.forohubapi.Entity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+
+import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+import java.util.List;
+
+@Entity(name = "Usuario")
+@Table(name = "usuario")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class Usuario {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String nombre;
+    private String email;
+    private String password;
+
+    @OneToMany(mappedBy = "autor")
+    @JsonManagedReference // Rompe la recursión en la serialización
+    private List<Post> posts;
+}
+
+
+package com.alura.forohubapi.Entity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+
+import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
+import java.util.Date;
+
+@Entity(name = "Post")
+@Table(name = "post")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class Post {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String titulo;
+    private String contenido;
+    private Date fecha;
+
+    @ManyToOne
+    @JoinColumn(name = "autor_id")
+    @JsonBackReference // Rompe la recursión en la serialización
+    private Usuario autor;
+}
+
+
+package com.alura.forohubapi.Entity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+
+import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.util.List;
+
+@Entity(name = "Usuario")
+@Table(name = "usuario")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@JsonIgnoreProperties({"posts"}) // Ignorar la propiedad posts durante la serialización
+public class Usuario {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String nombre;
+    private String email;
+    private String password;
+
+    @OneToMany(mappedBy = "autor")
+    private List<Post> posts;
+}
+
+package com.alura.forohubapi.Entity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+
+import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.util.Date;
+
+@Entity(name = "Post")
+@Table(name = "post")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // Evitar problemas de serialización
+public class Post {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String titulo;
+    private String contenido;
+    private Date fecha;
+
+    @ManyToOne
+    @JoinColumn(name = "autor_id")
+    private Usuario autor;
+}
+
+package com.alura.forohubapi.Servicio;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Repositorio.PostRepositorio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class PostServicio {
+    @Autowired
+    private PostRepositorio postRepositorio;
+
+    public Post crearPost(Post post) {
+        return postRepositorio.save(post);
+    }
+
+    public List<Post> obtenerTodosLosPosts() {
+        return postRepositorio.findAll();
+    }
+
+    public Optional<Post> obtenerPostPorId(Long id) {
+        return postRepositorio.findById(id);
+    }
+}
+
+
+package com.alura.forohubapi.Controlador;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Servicio.PostServicio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/posts")
+public class PostControlador {
+    @Autowired
+    private PostServicio postServicio;
+
+    @PostMapping("/crear")
+    public Post crearPost(@RequestBody Post post, @RequestParam Long autorId) {
+        return postServicio.crearPost(post);
+    }
+
+    @GetMapping
+    public List<Post> obtenerTodosLosPosts() {
+        return postServicio.obtenerTodosLosPosts();
+    }
+
+    @GetMapping("/{id}")
+    public Optional<Post> obtenerPostPorId(@PathVariable Long id) {
+        return postServicio.obtenerPostPorId(id);
+    }
+}
+
+
+package com.alura.forohubapi.Entity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+
+import jakarta.persistence.*;
+import java.util.Date;
+
+@Entity(name = "Post")
+@Table(name = "post")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class Post {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String titulo;
+    private String contenido;
+    private Date fecha;
+    private String status; // Nuevo campo
+    private String curso;  // Nuevo campo
+
+    @ManyToOne
+    @JoinColumn(name = "autor_id")
+    private Usuario autor;
+
+    @PrePersist
+    protected void onCreate() {
+        fecha = new Date();
+    }
+}
+
+
+package com.alura.forohubapi.Controlador;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Servicio.PostServicio;
+import com.alura.forohubapi.Servicio.UsuarioServicio;
+import com.alura.forohubapi.Entidad.Usuario;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/posts")
+public class PostControlador {
+    @Autowired
+    private PostServicio postServicio;
+
+    @Autowired
+    private UsuarioServicio usuarioServicio;
+
+    @PostMapping("/crear")
+    public Post crearPost(@RequestBody Post post, @RequestParam Long autorId) {
+        Usuario autor = usuarioServicio.obtenerUsuarioPorId(autorId);
+        post.setAutor(autor);
+        return postServicio.crearPost(post);
+    }
+
+    @GetMapping
+    public List<Post> obtenerTodosLosPosts() {
+        return postServicio.obtenerTodosLosPosts();
+    }
+
+    @GetMapping("/{id}")
+    public Optional<Post> obtenerPostPorId(@PathVariable Long id) {
+        return postServicio.obtenerPostPorId(id);
+    }
+}
+
+
+package com.alura.forohubapi.Servicio;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Repositorio.PostRepositorio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class PostServicio {
+    @Autowired
+    private PostRepositorio postRepositorio;
+
+    public Post crearPost(Post post) {
+        return postRepositorio.save(post);
+    }
+
+    public List<Post> obtenerTodosLosPosts() {
+        return postRepositorio.findAll();
+    }
+
+    public Optional<Post> obtenerPostPorId(Long id) {
+        return postRepositorio.findById(id);
+    }
+
+    public Post actualizarPost(Long id, Post nuevosDatos) {
+        Optional<Post> optionalPost = postRepositorio.findById(id);
+        if (optionalPost.isPresent()) {
+            Post postExistente = optionalPost.get();
+            postExistente.setTitulo(nuevosDatos.getTitulo());
+            postExistente.setContenido(nuevosDatos.getContenido());
+            postExistente.setStatus(nuevosDatos.getStatus());
+            postExistente.setCurso(nuevosDatos.getCurso());
+            return postRepositorio.save(postExistente);
+        } else {
+            throw new RuntimeException("Post no encontrado");
+        }
+    }
+}
+
+
+package com.alura.forohubapi.Controlador;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Servicio.PostServicio;
+import com.alura.forohubapi.Servicio.UsuarioServicio;
+import com.alura.forohubapi.Entidad.Usuario;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/posts")
+public class PostControlador {
+    @Autowired
+    private PostServicio postServicio;
+
+    @Autowired
+    private UsuarioServicio usuarioServicio;
+
+    @PostMapping("/crear")
+    public Post crearPost(@RequestBody Post post, @RequestParam Long autorId) {
+        Usuario autor = usuarioServicio.obtenerUsuarioPorId(autorId);
+        post.setAutor(autor);
+        return postServicio.crearPost(post);
+    }
+
+    @GetMapping
+    public List<Post> obtenerTodosLosPosts() {
+        return postServicio.obtenerTodosLosPosts();
+    }
+
+    @GetMapping("/{id}")
+    public Optional<Post> obtenerPostPorId(@PathVariable Long id) {
+        return postServicio.obtenerPostPorId(id);
+    }
+
+    @PutMapping("/actualizar/{id}")
+    public Post actualizarPost(@PathVariable Long id, @RequestBody Post nuevosDatos) {
+        return postServicio.actualizarPost(id, nuevosDatos);
+    }
+}
+
+
+
+package com.alura.forohubapi.Servicio;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Repositorio.PostRepositorio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class PostServicio {
+    @Autowired
+    private PostRepositorio postRepositorio;
+
+    public Post crearPost(Post post) {
+        return postRepositorio.save(post);
+    }
+
+    public List<Post> obtenerTodosLosPosts() {
+        return postRepositorio.findAll();
+    }
+
+    public Optional<Post> obtenerPostPorId(Long id) {
+        return postRepositorio.findById(id);
+    }
+
+    public Post actualizarPost(Long id, Post nuevosDatos) {
+        Optional<Post> optionalPost = postRepositorio.findById(id);
+        if (optionalPost.isPresent()) {
+            Post postExistente = optionalPost.get();
+
+            if (nuevosDatos.getTitulo() != null && !nuevosDatos.getTitulo().isEmpty()) {
+                postExistente.setTitulo(nuevosDatos.getTitulo());
+            }
+            if (nuevosDatos.getContenido() != null && !nuevosDatos.getContenido().isEmpty()) {
+                postExistente.setContenido(nuevosDatos.getContenido());
+            }
+            if (nuevosDatos.getStatus() != null && !nuevosDatos.getStatus().isEmpty()) {
+                postExistente.setStatus(nuevosDatos.getStatus());
+            }
+            if (nuevosDatos.getCurso() != null && !nuevosDatos.getCurso().isEmpty()) {
+                postExistente.setCurso(nuevosDatos.getCurso());
+            }
+
+            return postRepositorio.save(postExistente);
+        } else {
+            throw new RuntimeException("Post no encontrado");
+        }
+    }
+}
+
+package com.alura.forohubapi.Servicio;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Repositorio.PostRepositorio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class PostServicio {
+    @Autowired
+    private PostRepositorio postRepositorio;
+
+    public Post crearPost(Post post) {
+        return postRepositorio.save(post);
+    }
+
+    public List<Post> obtenerTodosLosPosts() {
+        return postRepositorio.findAll();
+    }
+
+    public Optional<Post> obtenerPostPorId(Long id) {
+        return postRepositorio.findById(id);
+    }
+
+    public Post actualizarPost(Long id, Post nuevosDatos) {
+        Optional<Post> optionalPost = postRepositorio.findById(id);
+        if (optionalPost.isPresent()) {
+            Post postExistente = optionalPost.get();
+
+            if (nuevosDatos.getTitulo() != null && !nuevosDatos.getTitulo().isEmpty()) {
+                postExistente.setTitulo(nuevosDatos.getTitulo());
+            }
+            if (nuevosDatos.getContenido() != null && !nuevosDatos.getContenido().isEmpty()) {
+                postExistente.setContenido(nuevosDatos.getContenido());
+            }
+            if (nuevosDatos.getStatus() != null && !nuevosDatos.getStatus().isEmpty()) {
+                postExistente.setStatus(nuevosDatos.getStatus());
+            }
+            if (nuevosDatos.getCurso() != null && !nuevosDatos.getCurso().isEmpty()) {
+                postExistente.setCurso(nuevosDatos.getCurso());
+            }
+
+            return postRepositorio.save(postExistente);
+        } else {
+            throw new RuntimeException("Post no encontrado");
+        }
+    }
+
+    public void eliminarPost(Long id) {
+        Optional<Post> optionalPost = postRepositorio.findById(id);
+        if (optionalPost.isPresent()) {
+            postRepositorio.deleteById(id);
+        } else {
+            throw new RuntimeException("Post no encontrado");
+        }
+    }
+}
+
+
+package com.alura.forohubapi.Controlador;
+
+import com.alura.forohubapi.Entidad.Post;
+import com.alura.forohubapi.Servicio.PostServicio;
+import com.alura.forohubapi.Servicio.UsuarioServicio;
+import com.alura.forohubapi.Entidad.Usuario;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/posts")
+public class PostControlador {
+    @Autowired
+    private PostServicio postServicio;
+
+    @Autowired
+    private UsuarioServicio usuarioServicio;
+
+    @PostMapping("/crear")
+    public Post crearPost(@RequestBody Post post, @RequestParam Long autorId) {
+        Usuario autor = usuarioServicio.obtenerUsuarioPorId(autorId);
+        post.setAutor(autor);
+        return postServicio.crearPost(post);
+    }
+
+    @GetMapping
+    public List<Post> obtenerTodosLosPosts() {
+        return postServicio.obtenerTodosLosPosts();
+    }
+
+    @GetMapping("/{id}")
+    public Optional<Post> obtenerPostPorId(@PathVariable Long id) {
+        return postServicio.obtenerPostPorId(id);
+    }
+
+    @PutMapping("/actualizar/{id}")
+    public Post actualizarPost(@PathVariable Long id, @RequestBody Post nuevosDatos) {
+        return postServicio.actualizarPost(id, nuevosDatos);
+    }
+
+    @DeleteMapping("/eliminar/{id}")
+    public String eliminarPost(@PathVariable Long id) {
+        postServicio.eliminarPost(id);
+        return "Post eliminado exitosamente";
+    }
+}
+

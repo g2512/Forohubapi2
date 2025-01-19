@@ -1,0 +1,45 @@
+package com.tuempresa.foro.entidad;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+import javax.persistence.*;
+import java.util.Date;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Post {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String titulo;
+    private String contenido;
+    private Date fecha;
+
+    @ManyToOne
+    @JoinColumn(name = "autor_id")
+    private Usuario autor;
+}
+
+
+@Autowired private UsuarioServicio usuarioServicio; @PostMapping("/registrar") public Usuario registrarUsuario(@RequestBody Usuario usuario) { return usuarioServicio.registrarUsuario(usuario); } @GetMapping("/{email}") public Usuario obtenerUsuarioPorEmail(@PathVariable String email) { return usuarioServicio.obtenerUsuarioPorEmail(email);
+
+<dependency>
+    <groupId>org.flywaydb</groupId>
+    <artifactId>flyway-core</artifactId>
+    <version>10.8.1</version>
+</dependency>
+
+
+CREATE TABLE post (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(255) NOT NULL,
+    contenido TEXT NOT NULL,
+    fecha TIMESTAMP NOT NULL,
+    autor_id BIGINT,
+    FOREIGN KEY (autor_id) REFERENCES usuario(id)
+);
+

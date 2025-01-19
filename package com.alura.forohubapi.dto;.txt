@@ -1,0 +1,178 @@
+package com.alura.forohubapi.dto;
+
+import java.util.List;
+
+public record UsuarioDTO(Long id, String nombre, String email, String password, List<PostDTO> posts) {}
+
+
+
+package com.alura.forohubapi.dto;
+
+import java.util.Date;
+
+public record PostDTO(Long id, String titulo, String contenido, Date fecha, String status, String curso, UsuarioDTO autor) {}
+
+
+package com.alura.forohubapi.servicio;
+
+import com.alura.forohubapi.dto.UsuarioDTO;
+import com.alura.forohubapi.entidad.Usuario;
+import com.alura.forohubapi.repositorio.UsuarioRepositorio;
+import com.alura.forohubapi.dto.PostDTO;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class UsuarioServicio {
+    @Autowired
+    private UsuarioRepositorio usuarioRepositorio;
+
+    public UsuarioDTO obtenerUsuarioPorId(Long id) {
+        Usuario usuario = usuarioRepositorio.findById(id).orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        List<PostDTO> posts = usuario.getPosts().stream()
+                .map(post -> new PostDTO(post.getId(), post.getTitulo(), post.getContenido(), post.getFecha(), post.getStatus(), post.getCurso(), null))
+                .collect(Collectors.toList());
+        return new UsuarioDTO(usuario.getId(), usuario.getNombre(), usuario.getEmail(), usuario.getPassword(), posts);
+    }
+}
+
+package com.alura.forohubapi.servicio;
+
+import com.alura.forohubapi.dto.PostDTO;
+import com.alura.forohubapi.dto.UsuarioDTO;
+import com.alura.forohubapi.entidad.Post;
+import com.alura.forohubapi.repositorio.PostRepositorio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class PostServicio {
+    @Autowired
+    private PostRepositorio postRepositorio;
+
+    public PostDTO crearPost(Post post) {
+        Post postGuardado = postRepositorio.save(post);
+        UsuarioDTO autorDTO = new UsuarioDTO(postGuardado.getAutor().getId(), postGuardado.getAutor().getNombre(), postGuardado.getAutor().getEmail(), postGuardado.getAutor().getPassword(), null);
+        return new PostDTO(postGuardado.getId(), postGuardado.getTitulo(), postGuardado.getContenido(), postGuardado.getFecha(), postGuardado.getStatus(), postGuardado.getCurso(), autorDTO);
+    }
+
+    public List<PostDTO> obtenerTodosLosPosts() {
+        return postRepositorio.findAll().stream()
+                .map(post -> {
+                    UsuarioDTO autorDTO = new UsuarioDTO(post.getAutor().getId(), post.getAutor().getNombre(), post.getAutor().getEmail(), post.getAutor().getPassword(), null);
+                    return new PostDTO(post.getId(), post.getTitulo(), post.getContenido(), post.getFecha(), post.getStatus(), post.getCurso(), autorDTO);
+                })
+                .collect(Collectors.toList());
+    }
+
+    public PostDTO obtenerPostPorId(Long id) {
+        Post post = postRepositorio.findById(id).orElseThrow(() -> new RuntimeException("Post no encontrado"));
+        UsuarioDTO autorDTO = new UsuarioDTO(post.getAutor().getId(), post.getAutor().getNombre(), post.getAutor().getEmail(), post.getAutor().getPassword(), null);
+        return new PostDTO(post.getId(), post.getTitulo(), post.getContenido(), post.getFecha(), post.getStatus(), post.getCurso(), autorDTO);
+    }
+
+    public PostDTO actualizarPost(Long id, Post nuevosDatos) {
+        Post postExistente = postRepositorio.findById(id).orElseThrow(() -> new RuntimeException("Post no encontrado"));
+
+        if (nuevosDatos.getTitulo() != null && !nuevosDatos.getTitulo().isEmpty()) {
+            postExistente.setTitulo(nuevosDatos.getTitulo());
+        }
+        if (nuevosDatos.getContenido() != null && !nuevosDatos.getContenido().isEmpty()) {
+            postExistente.setContenido(nuevosDatos.getContenido());
+        }
+        if (nuevosDatos.getStatus() != null && !nuevosDatos.getStatus().isEmpty()) {
+            postExistente.setStatus(nuevosDatos.getStatus());
+        }
+        if (nuevosDatos.getCurso() != null && !nuevosDatos.getCurso().isEmpty()) {
+            postExistente.setCurso(nuevosDatos.getCurso());
+        }
+
+        Post postGuardado = postRepositorio.save(postExistente);
+        UsuarioDTO autorDTO = new UsuarioDTO(postGuardado.getAutor().getId(), postGuardado.getAutor().getNombre(), postGuardado.getAutor().getEmail(), postGuardado.getAutor().getPassword(), null);
+        return new PostDTO(postGuardado.getId(), postGuardado.getTitulo(), postGuardado.getContenido(), postGuardado.getFecha(), postGuardado.getStatus(), postGuardado.getCurso(), autorDTO);
+    }
+
+    public void eliminarPost(Long id) {
+        postRepositorio.deleteById(id);
+    }
+}
+
+
+package com.alura.forohubapi.Controlador;
+
+import com.alura.forohubapi.dto.PostDTO;
+import com.alura.forohubapi.entidad.Post;
+import com.alura.forohubapi.servicio.PostServicio;
+import com.alura.forohubapi.servicio.UsuarioServicio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/posts")
+public class PostControlador {
+    @Autowired
+    private PostServicio postServicio;
+
+    @Autowired
+    private UsuarioServicio usuarioServicio;
+
+    @PostMapping("/crear")
+    public PostDTO crearPost(@RequestBody Post post, @RequestParam Long autorId) {
+        post.setAutor(usuarioServicio.obtenerUsuarioPorId(autorId).toEntity());
+        return postServicio.crearPost(post);
+    }
+
+    @GetMapping
+    public List<PostDTO> obtenerTodosLosPosts() {
+        return postServicio.obtenerTodosLosPosts();
+    }
+
+    @GetMapping("/{id}")
+    public PostDTO obtenerPostPorId(@PathVariable Long id) {
+        return postServicio.obtenerPostPorId(id);
+    }
+
+    @PutMapping("/actualizar/{id}")
+    public PostDTO actualizarPost(@PathVariable Long id, @RequestBody Post nuevosDatos) {
+        return postServicio.actualizarPost(id, nuevosDatos);
+    }
+
+    @DeleteMapping("/eliminar/{id}")
+    public String eliminarPost(@PathVariable Long id) {
+        postServicio.eliminarPost(id);
+        return "Post eliminado exitosamente";
+    }
+}
+
+
+package com.alura.forohubapi.Controlador;
+
+import com.alura.forohubapi.dto.UsuarioDTO;
+import com.alura.forohubapi.servicio.UsuarioServicio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/usuarios")
+public class UsuarioControlador {
+    @Autowired
+    private UsuarioServicio usuarioServicio;
+
+    @GetMapping("/{id}")
+    public UsuarioDTO obtenerUsuarioPorId(@PathVariable Long id) {
+        return usuarioServicio.obtenerUsuarioPorId(id);
+    }
+}
+
+
+
+
+

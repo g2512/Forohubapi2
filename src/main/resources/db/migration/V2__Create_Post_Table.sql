@@ -1,0 +1,8 @@
+CREATE TABLE post (
+id BIGINT AUTO_INCREMENT PRIMARY KEY,
+titulo VARCHAR(255) NOT NULL,
+contenido TEXT NOT NULL,
+fecha TIMESTAMP NOT NULL,
+autor_id BIGINT,
+FOREIGN KEY (autor_id) REFERENCES usuario(id)
+);

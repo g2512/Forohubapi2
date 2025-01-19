@@ -1,0 +1,36 @@
+package com.alura.forohubapi.Entity;
+import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.OneToMany;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import org.springframework.data.annotation.Id;
+
+
+import java.util.Date;
+
+@Entity(name="Post")
+@Table(name="post")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+
+public class Post {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String titulo;
+    private String contenido;
+    private Date fecha;
+
+    @ManyToOne
+    @JoinColumn(name = "autor_id")
+    private Usuario autor;
+
+
+}
+
+http://localhost:8080/medicos
